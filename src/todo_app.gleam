@@ -44,8 +44,8 @@ type Message {
   UserClickedOpenAddModal
   UserClickedAddTodo(todo_item: Todo)
 
-  UserClickedOpenDeleteModal(id: Int)
-  UserClickedDeleteTodo(id: Int)
+  UserClickedOpenDeleteModal(todo_item: Todo)
+  UserClickedDeleteTodo(todo_item: Todo)
 
   UserClickedOpenEditModal(todo_item: Todo)
   UserClickedSaveTodo(todo_item: Todo)
@@ -59,21 +59,29 @@ fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
       effect.none(),
     )
 
-    UserClickedOpenDeleteModal(id) -> todo
-    UserClickedDeleteTodo(id) -> #(
+    UserClickedOpenDeleteModal(todo_item) -> #(
+      Model(..model, selected_todo: option.Some(todo_item)),
+      effect.none(),
+    )
+    UserClickedDeleteTodo(selected_todo) -> #(
       Model(
         ..model,
+        selected_todo: option.None,
         todos: list.filter(model.todos, fn(todo_element) {
-          todo_element.id != id
+          todo_element.id != selected_todo.id
         }),
       ),
       effect.none(),
     )
 
-    UserClickedOpenEditModal(id) -> todo
+    UserClickedOpenEditModal(selected_todo) -> #(
+      Model(..model, selected_todo: option.Some(selected_todo)),
+      effect.none(),
+    )
     UserClickedSaveTodo(todo_item) -> #(
       Model(
         ..model,
+        selected_todo: option.None,
         todos: list.map(model.todos, fn(item) {
           case item.id == todo_item.id {
             True -> todo_item
@@ -83,8 +91,6 @@ fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
       ),
       effect.none(),
     )
-
-    _ -> #(model, effect.none())
   }
 }
 
@@ -104,14 +110,14 @@ fn view(model: Model) -> Element(Message) {
 
     html.ul(
       [attribute.id("todo-list")],
-      list.map(model.todos, fn(todo_element) {
+      list.map(model.todos, fn(todo_item) {
         html.li(
           [
             attribute.class("todo-element"),
-            attribute.class(state_to_css_class(todo_element.state)),
+            attribute.class(state_to_css_class(todo_item.state)),
           ],
           [
-            element.text(todo_element.name),
+            element.text(todo_item.name),
             html.button(
               [
                 attribute.commandfor("edit-todo-modal"),
@@ -121,6 +127,7 @@ fn view(model: Model) -> Element(Message) {
             ),
             html.button(
               [
+                event.on_click(UserClickedOpenDeleteModal(todo_item)),
                 attribute.commandfor("delete-todo-modal"),
                 attribute.command("show-modal"),
               ],
@@ -139,18 +146,31 @@ fn view(model: Model) -> Element(Message) {
         ),
       ]),
     ]),
-    html.dialog([attribute.id("delete-todo-modal")], [
-      html.div([], [
-        element.text("Remove Todo Modal"),
-        html.button(
-          [
-            attribute.commandfor("delete-todo-modal"),
-            attribute.command("close"),
-          ],
-          [element.text("Close")],
-        ),
-      ]),
-    ]),
+    html.dialog([attribute.id("delete-todo-modal")], case model.selected_todo {
+      option.Some(selected_todo) -> [
+        html.div([], [
+          element.text("Remove Todo Modal"),
+          html.button(
+            [
+              event.on_click(UserClickedDeleteTodo(selected_todo)),
+              attribute.commandfor("delete-todo-modal"),
+              attribute.command("close"),
+            ],
+            [
+              element.text("Confirm"),
+            ],
+          ),
+          html.button(
+            [
+              attribute.commandfor("delete-todo-modal"),
+              attribute.command("close"),
+            ],
+            [element.text("Close")],
+          ),
+        ]),
+      ]
+      option.None -> [element.none()]
+    }),
     html.dialog([attribute.id("edit-todo-modal")], [
       html.div([], [
         element.text("Edit Todo Modal"),
