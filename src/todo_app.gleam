@@ -6,10 +6,11 @@ import lustre/element/html
 import lustre/event
 
 import gleam/list
+import gleam/option
 import lustre/effect.{type Effect}
 
 type Model {
-  Model(total: Int, todos: List(Todo))
+  Model(total: Int, selected_todo: option.Option(Todo), todos: List(Todo))
 }
 
 type Todo {
@@ -32,7 +33,7 @@ fn state_to_css_class(state: State) -> String {
 
 fn init(_args) -> #(Model, Effect(Message)) {
   let model =
-    Model(total: 1, todos: [
+    Model(total: 1, selected_todo: option.None, todos: [
       Todo(id: 1, priority: 1, state: NotStarted, name: "test todo"),
     ])
 
@@ -40,22 +41,44 @@ fn init(_args) -> #(Model, Effect(Message)) {
 }
 
 type Message {
-  UserClickecAddTodo
-  UserClickedSaveTodo
-  UserClickedChangeTodoState(id: Int)
-  UserClickedSaveTodoState(id: Int, new_state: State)
-  UserClickedRenameTodo(id: Int)
-  UserClickedSaveTodoName(id: Int, new_name: String)
-  UserClickedRemoveTodo(id: Int)
+  UserClickedOpenAddModal
+  UserClickedAddTodo(todo_item: Todo)
+
+  UserClickedOpenDeleteModal(id: Int)
+  UserClickedDeleteTodo(id: Int)
+
+  UserClickedOpenEditModal(todo_item: Todo)
+  UserClickedSaveTodo(todo_item: Todo)
 }
 
 fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
   case message {
-    UserClickedRemoveTodo(id) -> #(
+    UserClickedOpenAddModal -> #(model, effect.none())
+    UserClickedAddTodo(todo_item) -> #(
+      Model(..model, todos: list.append(model.todos, [todo_item])),
+      effect.none(),
+    )
+
+    UserClickedOpenDeleteModal(id) -> todo
+    UserClickedDeleteTodo(id) -> #(
       Model(
         ..model,
         todos: list.filter(model.todos, fn(todo_element) {
           todo_element.id != id
+        }),
+      ),
+      effect.none(),
+    )
+
+    UserClickedOpenEditModal(id) -> todo
+    UserClickedSaveTodo(todo_item) -> #(
+      Model(
+        ..model,
+        todos: list.map(model.todos, fn(item) {
+          case item.id == todo_item.id {
+            True -> todo_item
+            False -> item
+          }
         }),
       ),
       effect.none(),
@@ -71,6 +94,14 @@ fn view(model: Model) -> Element(Message) {
       html.text("Welcome to my todo app"),
     ]),
 
+    html.button(
+      [
+        attribute.commandfor("add-todo-modal"),
+        attribute.command("show-modal"),
+      ],
+      [element.text("Add Todo")],
+    ),
+
     html.ul(
       [attribute.id("todo-list")],
       list.map(model.todos, fn(todo_element) {
@@ -83,25 +114,54 @@ fn view(model: Model) -> Element(Message) {
             element.text(todo_element.name),
             html.button(
               [
-                attribute.commandfor("edit-modal"),
+                attribute.commandfor("edit-todo-modal"),
                 attribute.command("show-modal"),
               ],
               [element.text("Edit")],
             ),
             html.button(
-              [event.on_click(UserClickedRemoveTodo(todo_element.id))],
+              [
+                attribute.commandfor("delete-todo-modal"),
+                attribute.command("show-modal"),
+              ],
               [element.text("Delete")],
             ),
           ],
         )
       }),
     ),
-    html.dialog([attribute.id("edit-modal")], [
-      element.text("Modal"),
-      html.button(
-        [attribute.commandfor("edit-modal"), attribute.command("close")],
-        [element.text("Close")],
-      ),
+    html.dialog([attribute.id("add-todo-modal")], [
+      html.div([], [
+        element.text("Add Todo Modal"),
+        html.button(
+          [attribute.commandfor("add-todo-modal"), attribute.command("close")],
+          [element.text("Close")],
+        ),
+      ]),
+    ]),
+    html.dialog([attribute.id("delete-todo-modal")], [
+      html.div([], [
+        element.text("Remove Todo Modal"),
+        html.button(
+          [
+            attribute.commandfor("delete-todo-modal"),
+            attribute.command("close"),
+          ],
+          [element.text("Close")],
+        ),
+      ]),
+    ]),
+    html.dialog([attribute.id("edit-todo-modal")], [
+      html.div([], [
+        element.text("Edit Todo Modal"),
+        html.button(
+          [
+            attribute.commandfor("edit-todo-modal"),
+            attribute.command("close"),
+          ],
+          [element.text("Close")],
+        ),
+      ]),
     ]),
   ])
 }
