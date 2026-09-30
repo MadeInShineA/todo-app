@@ -26,6 +26,7 @@
             beamPackages.erlang
             beamPackages.rebar3
             bun
+            vscode-css-languageserver
           ];
         };
       }
