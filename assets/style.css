@@ -1,11 +1,23 @@
+#page-content {
+    text-align: center;
+}
+
 #welcome {
-    color: blue;
+    font-weight: bold;
 }
 
 #todo-list {
-    background-color: gray;
+    list-style-type: none;
 }
 
-.todo-element {
-    color:aqua;
+.todo-element.state-not-started {
+    color: red;
+}
+
+.todo-element.state-started {
+    color: black;
+}
+
+.todo-element.state-finished {
+    color: green;
 }
