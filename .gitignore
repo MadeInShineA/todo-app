@@ -3,3 +3,7 @@
 /build
 erl_crash.dump
 .direnv/
+
+#Added automatically by Lustre Dev Tools
+/.lustre
+/dist
